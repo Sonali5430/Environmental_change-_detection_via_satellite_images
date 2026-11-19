@@ -56,24 +56,23 @@ def histogram_match(source: np.ndarray, reference: np.ndarray) -> np.ndarray:
     raise ValueError(f"Unsupported shape for histogram matching: {source.shape}")
 
 
-def cloud_mask(bands: np.ndarray, brightness_thresh: float = 0.45) -> np.ndarray:
-    """Detect cloud and bright saturated anomalies.
+def cloud_mask(bands: np.ndarray, brightness_thresh: float = 0.88) -> np.ndarray:
+    """Detect cloud and bright saturated anomalies (top reflectance).
 
     Returns boolean mask (H, W) where True indicates cloudy/invalid pixels.
     """
+    max_v = float(np.nanmax(bands)) if bands.size > 0 else 1.0
+    thresh = brightness_thresh if max_v <= 1.0 else (brightness_thresh * (65535.0 if max_v > 255.0 else 255.0))
+
     if bands.ndim == 2:
-        return bands > brightness_thresh
+        return bands > thresh
 
     c, h, w = bands.shape
     if c >= 3:
-        # Visible + NIR brightness indicator
-        # Band 0 (Green), Band 1 (Red), Band 2 (NIR)
         vis_nir_mean = np.mean(bands[:3], axis=0)
-        clouds = vis_nir_mean > brightness_thresh
-        return clouds.astype(bool)
+        return (vis_nir_mean > thresh).astype(bool)
 
-    # Fallback to mean of all available bands
-    return (np.mean(bands, axis=0) > brightness_thresh).astype(bool)
+    return (np.mean(bands, axis=0) > thresh).astype(bool)
 
 
 def preprocess_pair(
@@ -108,3 +107,4 @@ def preprocess_pair(
     valid_mask = (~cloud_b) & (~cloud_a)
 
     return b_clean, a_clean, valid_mask
+

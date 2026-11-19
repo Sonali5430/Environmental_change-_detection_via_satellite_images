@@ -46,6 +46,15 @@ def load_image(path: str) -> Dict[str, Any]:
             if np.isnan(bands).any():
                 bands = np.nan_to_num(bands, nan=0.0)
 
+            # Standardize pixel values to [0.0, 1.0] reflectance range
+            max_v = float(np.nanmax(bands))
+            if max_v > 1000.0:
+                divisor = 65535.0 if max_v > 10000.0 else 10000.0
+                bands = bands / divisor
+            elif max_v > 1.0:
+                bands = bands / 255.0
+            bands = np.clip(bands, 0.0, 1.0)
+
             return {
                 "bands": bands,
                 "transform": transform,
@@ -380,3 +389,4 @@ def generate_synthetic_pair(
         "after_path": str(after_path),
         "ground_truth_path": str(gt_path)
     }
+
